@@ -1,0 +1,670 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>TNews-CN-Taxonomy — 中文短新闻主题分类</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&family=Noto+Sans+SC:wght@300;400;500;700&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg: #0a0a0f;
+  --bg-card: #12121a;
+  --bg-card-hover: #1a1a28;
+  --border: #1e1e2e;
+  --border-accent: #2a2a4a;
+  --text: #e4e4ef;
+  --text-dim: #8888a0;
+  --text-muted: #55556a;
+  --accent: #6366f1;
+  --accent-glow: rgba(99, 102, 241, 0.15);
+  --accent2: #22d3ee;
+  --accent2-glow: rgba(34, 211, 238, 0.1);
+  --success: #34d399;
+  --warn: #fbbf24;
+  --danger: #f87171;
+  --gradient: linear-gradient(135deg, #6366f1, #22d3ee);
+}
+
+* { margin: 0; padding: 0; box-sizing: border-box; }
+
+html { scroll-behavior: smooth; }
+
+body {
+  font-family: 'Inter', 'Noto Sans SC', -apple-system, sans-serif;
+  background: var(--bg);
+  color: var(--text);
+  line-height: 1.7;
+  overflow-x: hidden;
+}
+
+/* ── Noise overlay ── */
+body::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  background: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.03'/%3E%3C/svg%3E");
+  pointer-events: none;
+  z-index: 9999;
+}
+
+/* ── Grid background ── */
+.grid-bg {
+  position: fixed;
+  inset: 0;
+  background-image:
+    linear-gradient(rgba(99,102,241,0.03) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(99,102,241,0.03) 1px, transparent 1px);
+  background-size: 60px 60px;
+  pointer-events: none;
+  z-index: 0;
+}
+
+/* ── Glow orbs ── */
+.orb {
+  position: fixed;
+  border-radius: 50%;
+  filter: blur(120px);
+  pointer-events: none;
+  z-index: 0;
+}
+.orb-1 { width: 600px; height: 600px; background: var(--accent-glow); top: -200px; right: -200px; }
+.orb-2 { width: 500px; height: 500px; background: var(--accent2-glow); bottom: -100px; left: -200px; }
+
+/* ── Layout ── */
+.container { max-width: 1100px; margin: 0 auto; padding: 0 2rem; position: relative; z-index: 1; }
+
+/* ── Nav ── */
+nav {
+  position: fixed; top: 0; left: 0; right: 0; z-index: 100;
+  backdrop-filter: blur(20px) saturate(1.5);
+  background: rgba(10,10,15,0.8);
+  border-bottom: 1px solid var(--border);
+}
+nav .container {
+  display: flex; align-items: center; justify-content: space-between;
+  height: 64px;
+}
+.nav-brand {
+  font-weight: 700; font-size: 1.1rem;
+  background: var(--gradient); -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+  letter-spacing: -0.02em;
+}
+.nav-links { display: flex; gap: 2rem; }
+.nav-links a {
+  color: var(--text-dim); text-decoration: none; font-size: 0.875rem;
+  font-weight: 500; transition: color 0.2s;
+}
+.nav-links a:hover { color: var(--text); }
+
+/* ── Hero ── */
+.hero {
+  min-height: 100vh; display: flex; align-items: center; justify-content: center;
+  text-align: center; padding-top: 64px;
+}
+.hero-content { max-width: 800px; }
+.hero-badge {
+  display: inline-flex; align-items: center; gap: 0.5rem;
+  padding: 0.4rem 1rem; border-radius: 100px;
+  background: var(--accent-glow); border: 1px solid rgba(99,102,241,0.2);
+  font-size: 0.8rem; color: var(--accent); font-weight: 500;
+  margin-bottom: 2rem;
+}
+.hero-badge .dot { width: 6px; height: 6px; border-radius: 50%; background: var(--accent); animation: pulse 2s infinite; }
+@keyframes pulse { 0%,100% { opacity: 1; } 50% { opacity: 0.4; } }
+
+.hero h1 {
+  font-size: clamp(2.5rem, 6vw, 4.5rem);
+  font-weight: 700; letter-spacing: -0.04em;
+  line-height: 1.1; margin-bottom: 1.5rem;
+}
+.hero h1 .gradient {
+  background: var(--gradient); -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+}
+.hero p {
+  font-size: 1.15rem; color: var(--text-dim); max-width: 600px; margin: 0 auto 2.5rem;
+  line-height: 1.8;
+}
+.hero-actions { display: flex; gap: 1rem; justify-content: center; flex-wrap: wrap; }
+.btn {
+  display: inline-flex; align-items: center; gap: 0.5rem;
+  padding: 0.75rem 1.75rem; border-radius: 12px;
+  font-size: 0.9rem; font-weight: 600; text-decoration: none;
+  transition: all 0.3s; cursor: pointer; border: none;
+}
+.btn-primary {
+  background: var(--gradient); color: #fff;
+  box-shadow: 0 4px 24px rgba(99,102,241,0.3);
+}
+.btn-primary:hover { transform: translateY(-2px); box-shadow: 0 8px 32px rgba(99,102,241,0.4); }
+.btn-ghost {
+  background: transparent; color: var(--text);
+  border: 1px solid var(--border-accent);
+}
+.btn-ghost:hover { background: var(--bg-card); border-color: var(--accent); }
+
+/* ── Section ── */
+section { padding: 6rem 0; }
+.section-label {
+  font-size: 0.75rem; font-weight: 600; text-transform: uppercase;
+  letter-spacing: 0.15em; color: var(--accent); margin-bottom: 0.75rem;
+}
+.section-title {
+  font-size: clamp(1.8rem, 4vw, 2.8rem);
+  font-weight: 700; letter-spacing: -0.03em; margin-bottom: 1rem;
+}
+.section-desc { color: var(--text-dim); font-size: 1.05rem; max-width: 650px; margin-bottom: 3rem; }
+
+/* ── Stats ── */
+.stats-grid {
+  display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 1.5rem; margin-bottom: 4rem;
+}
+.stat-card {
+  background: var(--bg-card); border: 1px solid var(--border);
+  border-radius: 16px; padding: 1.75rem;
+  transition: all 0.3s;
+}
+.stat-card:hover { border-color: var(--border-accent); background: var(--bg-card-hover); }
+.stat-value {
+  font-size: 2.2rem; font-weight: 700; letter-spacing: -0.03em;
+  background: var(--gradient); -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+}
+.stat-label { font-size: 0.85rem; color: var(--text-dim); margin-top: 0.25rem; }
+
+/* ── Architecture cards ── */
+.arch-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 2rem; }
+@media (max-width: 768px) { .arch-grid { grid-template-columns: 1fr; } }
+
+.arch-card {
+  background: var(--bg-card); border: 1px solid var(--border);
+  border-radius: 20px; padding: 2.5rem; position: relative; overflow: hidden;
+  transition: all 0.4s;
+}
+.arch-card:hover { border-color: var(--border-accent); transform: translateY(-4px); }
+.arch-card::before {
+  content: ''; position: absolute; top: 0; left: 0; right: 0; height: 3px;
+  background: var(--gradient); opacity: 0; transition: opacity 0.3s;
+}
+.arch-card:hover::before { opacity: 1; }
+.arch-card h3 { font-size: 1.3rem; font-weight: 700; margin-bottom: 0.5rem; }
+.arch-card .tag {
+  display: inline-block; padding: 0.2rem 0.6rem; border-radius: 6px;
+  font-size: 0.7rem; font-weight: 600; margin-bottom: 1rem;
+}
+.tag-best { background: rgba(52,211,153,0.15); color: var(--success); }
+.tag-alt { background: rgba(99,102,241,0.15); color: var(--accent); }
+.arch-card p { color: var(--text-dim); font-size: 0.9rem; line-height: 1.7; }
+.arch-card .metrics { margin-top: 1.5rem; display: flex; gap: 1.5rem; }
+.arch-card .metric-item { }
+.arch-card .metric-val { font-size: 1.4rem; font-weight: 700; color: var(--text); }
+.arch-card .metric-lbl { font-size: 0.75rem; color: var(--text-muted); }
+
+/* ── Results table ── */
+.results-table {
+  width: 100%; border-collapse: separate; border-spacing: 0;
+  background: var(--bg-card); border: 1px solid var(--border);
+  border-radius: 16px; overflow: hidden;
+}
+.results-table th {
+  background: rgba(99,102,241,0.08); padding: 1rem 1.25rem;
+  font-size: 0.8rem; font-weight: 600; text-transform: uppercase;
+  letter-spacing: 0.08em; color: var(--text-dim); text-align: left;
+  border-bottom: 1px solid var(--border);
+}
+.results-table td {
+  padding: 0.9rem 1.25rem; font-size: 0.9rem;
+  border-bottom: 1px solid var(--border);
+}
+.results-table tr:last-child td { border-bottom: none; }
+.results-table tr:hover td { background: var(--bg-card-hover); }
+.results-table .highlight { color: var(--success); font-weight: 700; }
+.results-table .fail { color: var(--danger); font-weight: 500; }
+.results-table code {
+  font-family: 'JetBrains Mono', monospace; font-size: 0.8rem;
+  background: rgba(99,102,241,0.1); padding: 0.15rem 0.4rem; border-radius: 4px;
+}
+
+/* ── Pipeline ── */
+.pipeline {
+  display: flex; gap: 0; align-items: stretch; flex-wrap: wrap;
+  margin: 2rem 0;
+}
+.pipe-step {
+  flex: 1; min-width: 160px; padding: 1.5rem;
+  background: var(--bg-card); border: 1px solid var(--border);
+  position: relative; text-align: center;
+}
+.pipe-step:first-child { border-radius: 16px 0 0 16px; }
+.pipe-step:last-child { border-radius: 0 16px 16px 0; }
+.pipe-step::after {
+  content: '→'; position: absolute; right: -8px; top: 50%;
+  transform: translateY(-50%); color: var(--accent); font-size: 1.2rem;
+  z-index: 2; background: var(--bg); width: 16px; text-align: center;
+}
+.pipe-step:last-child::after { display: none; }
+.pipe-step .step-num {
+  font-size: 0.65rem; font-weight: 700; color: var(--accent);
+  text-transform: uppercase; letter-spacing: 0.1em; margin-bottom: 0.5rem;
+}
+.pipe-step .step-title { font-size: 0.85rem; font-weight: 600; }
+.pipe-step .step-desc { font-size: 0.75rem; color: var(--text-muted); margin-top: 0.25rem; }
+
+/* ── Tokenizer comparison ── */
+.token-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 1.5rem; }
+@media (max-width: 768px) { .token-grid { grid-template-columns: 1fr; } }
+.token-card {
+  background: var(--bg-card); border: 1px solid var(--border);
+  border-radius: 16px; padding: 1.75rem; transition: all 0.3s;
+}
+.token-card:hover { border-color: var(--border-accent); }
+.token-card h4 { font-size: 1rem; font-weight: 600; margin-bottom: 0.75rem; }
+.token-card .token-example {
+  font-family: 'JetBrains Mono', monospace; font-size: 0.75rem;
+  color: var(--accent2); background: rgba(34,211,238,0.05);
+  padding: 0.75rem; border-radius: 8px; margin-top: 0.75rem;
+  word-break: break-all; line-height: 1.6;
+}
+.token-card .token-stat { display: flex; justify-content: space-between; margin-top: 0.5rem; }
+.token-card .token-stat span:first-child { color: var(--text-muted); font-size: 0.8rem; }
+.token-card .token-stat span:last-child { font-weight: 600; font-size: 0.85rem; }
+
+/* ── Bad cases ── */
+.case-grid { display: grid; gap: 1.25rem; }
+.case-card {
+  background: var(--bg-card); border: 1px solid var(--border);
+  border-radius: 14px; padding: 1.5rem; display: grid;
+  grid-template-columns: 1fr auto; gap: 1rem; align-items: start;
+}
+.case-text { font-size: 0.95rem; line-height: 1.6; }
+.case-labels { display: flex; flex-direction: column; gap: 0.4rem; text-align: right; }
+.case-label {
+  font-size: 0.7rem; font-weight: 600; padding: 0.2rem 0.6rem;
+  border-radius: 6px; white-space: nowrap;
+}
+.case-true { background: rgba(52,211,153,0.15); color: var(--success); }
+.case-pred { background: rgba(248,113,113,0.15); color: var(--danger); }
+
+/* ── Footer ── */
+footer {
+  border-top: 1px solid var(--border); padding: 3rem 0;
+  text-align: center; color: var(--text-muted); font-size: 0.85rem;
+}
+footer a { color: var(--accent); text-decoration: none; }
+footer a:hover { text-decoration: underline; }
+
+/* ── Animations ── */
+.fade-in {
+  opacity: 0; transform: translateY(30px);
+  transition: opacity 0.8s ease, transform 0.8s ease;
+}
+.fade-in.visible { opacity: 1; transform: translateY(0); }
+
+/* ── Scrollbar ── */
+::-webkit-scrollbar { width: 6px; }
+::-webkit-scrollbar-track { background: var(--bg); }
+::-webkit-scrollbar-thumb { background: var(--border-accent); border-radius: 3px; }
+</style>
+</head>
+<body>
+
+<div class="grid-bg"></div>
+<div class="orb orb-1"></div>
+<div class="orb orb-2"></div>
+
+<!-- Nav -->
+<nav>
+  <div class="container">
+    <div class="nav-brand">TNews-CN-Taxonomy</div>
+    <div class="nav-links">
+      <a href="#overview">Overview</a>
+      <a href="#architecture">Architecture</a>
+      <a href="#results">Results</a>
+      <a href="#analysis">Analysis</a>
+      <a href="https://github.com/ouyangyipeng/TNews-CN-Taxonomy" target="_blank">GitHub ↗</a>
+    </div>
+  </div>
+</nav>
+
+<!-- Hero -->
+<section class="hero">
+  <div class="hero-content">
+    <div class="hero-badge"><span class="dot"></span>Neural Network Course Project</div>
+    <h1>中文短新闻<br><span class="gradient">主题分类系统</span></h1>
+    <p>基于 BiLSTM+Attention 与 Transformer 双架构对比，在 TNEWS 15 类新闻数据集上实现 48.33% Macro-F1，深入探索多粒度分词、注意力可视化与错误归因分析。</p>
+    <div class="hero-actions">
+      <a href="https://github.com/ouyangyipeng/TNews-CN-Taxonomy" class="btn btn-primary" target="_blank">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><path d="M12 0C5.37 0 0 5.37 0 12c0 5.31 3.435 9.795 8.205 11.385.6.105.825-.255.825-.57 0-.285-.015-1.23-.015-2.235-3.015.555-3.795-.735-4.035-1.41-.135-.345-.72-1.41-1.23-1.695-.42-.225-1.02-.78-.015-.795.945-.015 1.62.87 1.845 1.23 1.08 1.815 2.805 1.305 3.495.99.105-.78.42-1.305.765-1.605-2.67-.3-5.46-1.335-5.46-5.925 0-1.305.465-2.385 1.23-3.225-.12-.3-.54-1.53.12-3.18 0 0 1.005-.315 3.3 1.23.96-.27 1.98-.405 3-.405s2.04.135 3 .405c2.295-1.56 3.3-1.23 3.3-1.23.66 1.65.24 2.88.12 3.18.765.84 1.23 1.905 1.23 3.225 0 4.605-2.805 5.625-5.475 5.925.435.375.81 1.095.81 2.22 0 1.605-.015 2.895-.015 3.3 0 .315.225.69.825.57A12.02 12.02 0 0024 12c0-6.63-5.37-12-12-12z"/></svg>
+        View Source
+      </a>
+      <a href="#results" class="btn btn-ghost">View Results ↓</a>
+    </div>
+  </div>
+</section>
+
+<!-- Overview -->
+<section id="overview">
+  <div class="container">
+    <div class="fade-in">
+      <div class="section-label">Overview</div>
+      <div class="section-title">项目概览</div>
+      <div class="section-desc">在 TNEWS 今日头条中文新闻短文本分类数据集上，从零搭建两种深度学习架构进行 15 分类对比实验。</div>
+    </div>
+
+    <div class="stats-grid fade-in">
+      <div class="stat-card">
+        <div class="stat-value">49,726</div>
+        <div class="stat-label">训练样本（清洗后）</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-value">15</div>
+        <div class="stat-label">新闻主题类别</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-value">48.33%</div>
+        <div class="stat-label">最佳 Macro-F1</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-value">6</div>
+        <div class="stat-label">消融实验组数</div>
+      </div>
+    </div>
+
+    <!-- Pipeline -->
+    <div class="fade-in">
+      <div class="section-label">Pipeline</div>
+      <div class="section-title" style="font-size:1.5rem; margin-bottom:1.5rem;">处理流水线</div>
+    </div>
+    <div class="pipeline fade-in">
+      <div class="pipe-step">
+        <div class="step-num">Step 01</div>
+        <div class="step-title">数据清洗</div>
+        <div class="step-desc">去重 · 规范化</div>
+      </div>
+      <div class="pipe-step">
+        <div class="step-num">Step 02</div>
+        <div class="step-title">多粒度分词</div>
+        <div class="step-desc">Char · Word · Subword</div>
+      </div>
+      <div class="pipe-step">
+        <div class="step-num">Step 03</div>
+        <div class="step-title">词表构建</div>
+        <div class="step-desc">仅训练集 · min_freq=1</div>
+      </div>
+      <div class="pipe-step">
+        <div class="step-num">Step 04</div>
+        <div class="step-title">模型训练</div>
+        <div class="step-desc">Warmup · Early Stop</div>
+      </div>
+      <div class="pipe-step">
+        <div class="step-num">Step 05</div>
+        <div class="step-title">评估分析</div>
+        <div class="step-desc">F1 · 混淆矩阵 · t-SNE</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- Architecture -->
+<section id="architecture">
+  <div class="container">
+    <div class="fade-in">
+      <div class="section-label">Architecture</div>
+      <div class="section-title">双架构设计</div>
+      <div class="section-desc">手动实现 BiLSTM+Bahdanau Attention 与 Transformer Encoder，所有核心组件均使用 PyTorch nn 基础算子搭建。</div>
+    </div>
+
+    <div class="arch-grid fade-in">
+      <div class="arch-card">
+        <span class="tag tag-best">★ Best Model</span>
+        <h3>BiLSTM + Bahdanau Attention</h3>
+        <p>双向 LSTM 编码器捕获前后文语义，加性注意力机制动态聚焦关键位置。2 层 BiLSTM（hidden=256）+ Attention（dim=128）+ 双层分类头。</p>
+        <div class="metrics">
+          <div class="metric-item">
+            <div class="metric-val">4.8M</div>
+            <div class="metric-lbl">参数量</div>
+          </div>
+          <div class="metric-item">
+            <div class="metric-val">0.4833</div>
+            <div class="metric-lbl">Macro-F1</div>
+          </div>
+          <div class="metric-item">
+            <div class="metric-val">Epoch 6</div>
+            <div class="metric-lbl">Best</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="arch-card">
+        <span class="tag tag-alt">Comparison</span>
+        <h3>Transformer Encoder</h3>
+        <p>4 层 Encoder（d_model=512, 8 heads），正弦位置编码 + Multi-Head Self-Attention + FFN + LayerNorm，Global Average Pooling 输出。</p>
+        <div class="metrics">
+          <div class="metric-item">
+            <div class="metric-val">15.2M</div>
+            <div class="metric-lbl">参数量</div>
+          </div>
+          <div class="metric-item">
+            <div class="metric-val">0.4222</div>
+            <div class="metric-lbl">Macro-F1</div>
+          </div>
+          <div class="metric-item">
+            <div class="metric-val">Epoch 3</div>
+            <div class="metric-lbl">Best</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- Tokenizer -->
+<section id="tokenizer">
+  <div class="container">
+    <div class="fade-in">
+      <div class="section-label">Tokenization</div>
+      <div class="section-title">多粒度分词对比</div>
+      <div class="section-desc">三种分词策略的消融实验，探索字符级、词级、子词级在短文本分类上的表现差异。</div>
+    </div>
+
+    <div class="token-grid fade-in">
+      <div class="token-card">
+        <h4>Char-level</h4>
+        <div class="token-stat"><span>词表大小</span><span>4,809</span></div>
+        <div class="token-stat"><span>平均序列长度</span><span>44</span></div>
+        <div class="token-stat"><span>min_freq</span><span>1</span></div>
+        <div class="token-example">上/课/时/学/生/手/机/响/个/不/停</div>
+      </div>
+      <div class="token-card">
+        <h4>Word-level (jieba)</h4>
+        <div class="token-stat"><span>词表大小</span><span>67,799</span></div>
+        <div class="token-stat"><span>平均序列长度</span><span>26</span></div>
+        <div class="token-stat"><span>min_freq</span><span>1</span></div>
+        <div class="token-example">上课时/学生/手机/响个/不停</div>
+      </div>
+      <div class="token-card">
+        <h4>Subword (BERT WPM)</h4>
+        <div class="token-stat"><span>词表大小</span><span>21,128</span></div>
+        <div class="token-stat"><span>平均序列长度</span><span>44</span></div>
+        <div class="token-stat"><span>来源</span><span>bert-base-chinese</span></div>
+        <div class="token-example">上/课/时/学/生/手/机/响/个/不/停</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- Results -->
+<section id="results">
+  <div class="container">
+    <div class="fade-in">
+      <div class="section-label">Results</div>
+      <div class="section-title">实验结果</div>
+      <div class="section-desc">6 组消融实验完整对比，包含失败实验的如实呈现。</div>
+    </div>
+
+    <div class="fade-in" style="overflow-x:auto;">
+      <table class="results-table">
+        <thead>
+          <tr>
+            <th>模型</th>
+            <th>分词方式</th>
+            <th>Val Acc</th>
+            <th>Val Macro-F1</th>
+            <th>Best Epoch</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><strong>BiLSTM+Attention</strong></td>
+            <td><code>Char</code></td>
+            <td>0.4999</td>
+            <td class="highlight">0.4833 ★</td>
+            <td>6</td>
+          </tr>
+          <tr>
+            <td><strong>BiLSTM+Attention</strong></td>
+            <td><code>Word</code></td>
+            <td>0.4683</td>
+            <td>0.4579</td>
+            <td>5</td>
+          </tr>
+          <tr>
+            <td>Transformer</td>
+            <td><code>Char v1</code> <span style="color:var(--text-muted);font-size:0.75rem">lr=5e-4</span></td>
+            <td class="fail">0.1094</td>
+            <td class="fail">0.0131</td>
+            <td>—</td>
+          </tr>
+          <tr>
+            <td>Transformer</td>
+            <td><code>Char v2</code> <span style="color:var(--text-muted);font-size:0.75rem">lr=1e-3</span></td>
+            <td>0.4404</td>
+            <td>0.4093</td>
+            <td>4</td>
+          </tr>
+          <tr>
+            <td>Transformer</td>
+            <td><code>Word</code></td>
+            <td>0.4675</td>
+            <td>0.4222</td>
+            <td>3</td>
+          </tr>
+          <tr>
+            <td>Transformer</td>
+            <td><code>Subword</code></td>
+            <td class="fail">0.1094</td>
+            <td class="fail">0.0131</td>
+            <td>—</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="stats-grid fade-in" style="margin-top:3rem;">
+      <div class="stat-card">
+        <div class="stat-value">49.72%</div>
+        <div class="stat-label">Test Accuracy</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-value">47.00%</div>
+        <div class="stat-label">Test Macro-F1</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-value">9,765</div>
+        <div class="stat-label">测试集样本数</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- Analysis -->
+<section id="analysis">
+  <div class="container">
+    <div class="fade-in">
+      <div class="section-label">Analysis</div>
+      <div class="section-title">错误归因分析</div>
+      <div class="section-desc">从模型实际输出中提取的典型 Bad Case，分析短文本分类中的语义歧义与类别混淆。</div>
+    </div>
+
+    <div class="case-grid fade-in">
+      <div class="case-card">
+        <div class="case-text">以色列大规模空袭开始!伊朗多个军事目标遭遇打击,誓言对等反击</div>
+        <div class="case-labels">
+          <span class="case-label case-true">True: military</span>
+          <span class="case-label case-pred">Pred: world (66.4%)</span>
+        </div>
+      </div>
+      <div class="case-card">
+        <div class="case-text">出栏一头猪亏损300元,究竟谁能笑到最后!</div>
+        <div class="case-labels">
+          <span class="case-label case-true">True: finance</span>
+          <span class="case-label case-pred">Pred: agriculture (70.7%)</span>
+        </div>
+      </div>
+      <div class="case-card">
+        <div class="case-text">苹果创始人的女儿在旧金山新购置一处豪宅:价值1亿,景观无敌</div>
+        <div class="case-labels">
+          <span class="case-label case-true">True: house</span>
+          <span class="case-label case-pred">Pred: tech (41.9%)</span>
+        </div>
+      </div>
+      <div class="case-card">
+        <div class="case-text">国产新力量,领克02这个价位你能接受?</div>
+        <div class="case-labels">
+          <span class="case-label case-true">True: car</span>
+          <span class="case-label case-pred">Pred: military (72.4%)</span>
+        </div>
+      </div>
+      <div class="case-card">
+        <div class="case-text">"你们的产品让人们越来越懒"——农行董事长为何如此评价?</div>
+        <div class="case-labels">
+          <span class="case-label case-true">True: tech</span>
+          <span class="case-label case-pred">Pred: agriculture (40.0%)</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="fade-in" style="margin-top:3rem;">
+      <div class="section-label">Key Findings</div>
+      <div class="section-title" style="font-size:1.5rem;">核心发现</div>
+    </div>
+    <div class="arch-grid fade-in" style="margin-top:1.5rem;">
+      <div class="arch-card">
+        <h3>🏆 BiLSTM 优于 Transformer</h3>
+        <p>短文本（平均 22 字符）上，BiLSTM 的循环结构更适合捕获短距离依赖。Transformer 参数量大（15.2M vs 4.8M），在小数据集上容易过拟合。Transformer 对学习率极度敏感，需要 warmup 才能正常训练。</p>
+      </div>
+      <div class="arch-card">
+        <h3>📝 Char-level 优于 Word-level</h3>
+        <p>字符级分词 Macro-F1 比词级高 2.5 个百分点。短文本中 Char-level 保留更多细粒度信息，而 jieba 分词容易引入切分错误（如"上课时"→"上课/时"），破坏完整语义单元。</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- Footer -->
+<footer>
+  <div class="container">
+    <p style="margin-bottom:0.5rem;">
+      <a href="https://github.com/ouyangyipeng/TNews-CN-Taxonomy" target="_blank">GitHub Repository</a>
+      &nbsp;·&nbsp;
+      <a href="https://tnews.nexa-lang.com">Project Homepage</a>
+    </p>
+    <p>TNews-CN-Taxonomy · 人工神经网络课程项目 · 2026</p>
+  </div>
+</footer>
+
+<script>
+// Intersection Observer for fade-in animations
+const observer = new IntersectionObserver((entries) => {
+  entries.forEach(entry => {
+    if (entry.isIntersecting) {
+      entry.target.classList.add('visible');
+    }
+  });
+}, { threshold: 0.1, rootMargin: '0px 0px -50px 0px' });
+
+document.querySelectorAll('.fade-in').forEach(el => observer.observe(el));
+</script>
+
+</body>
+</html>

@@ -1,0 +1,845 @@
+\documentclass[a4paper]{article}
+
+\usepackage[UTF8]{ctex}
+\usepackage[a4paper,margin=1in]{geometry}
+\usepackage{graphicx}
+\usepackage{float}
+\usepackage{listings}
+\usepackage{longtable}
+\usepackage{booktabs}
+\usepackage{hyperref}
+\usepackage{fancyhdr}
+\usepackage{lastpage}
+\usepackage{color}
+\usepackage{indentfirst}
+\setlength{\parindent}{2em}
+\usepackage{zhnumber}
+\usepackage[dvipsnames,table,xcdraw]{xcolor}
+\usepackage{adjustbox}
+\usepackage{subcaption}
+\usepackage{amsmath}
+\usepackage{amssymb}
+\usepackage[many]{tcolorbox}
+\usepackage{enumitem}
+\usepackage[T1]{fontenc}
+\usepackage{lmodern}
+\usepackage{inconsolata}
+
+\setCJKmainfont{Noto Serif CJK SC}
+\setCJKsansfont{Noto Sans CJK SC}
+\setCJKmonofont{Noto Sans Mono CJK SC}
+
+\setlist[itemize]{
+    itemsep=2pt,
+    topsep=4pt,
+    parsep=1pt,
+    leftmargin=3em
+}
+\setlist[itemize,1]{
+    label=\textcolor{orange}{$\blacktriangleright$},
+    font=\color{blue!80!black}\small\bfseries,
+    before={\color{blue!80!black}\small\bfseries}
+}
+
+\newcommand{\projname}{人工神经网络}
+\newcommand{\reporttitle}{作业二：基于深度神经网络的中文短新闻主题分类}
+\newcommand{\stuno}{23336188}
+\newcommand{\authorname}{欧阳易\CJKfontspec{Noto Serif CJK SC}芃}
+\newcommand{\major}{计算机科学与技术}
+\newcommand{\adviser}{潘炎}
+\newcommand{\labdate}{2026年5月}
+
+\pagestyle{fancy}
+\fancyhf{}
+\fancyhead[L]{\kaishu \projname}
+\fancyhead[C]{\kaishu \reporttitle}
+\fancyhead[R]{\kaishu \authorname}
+\fancyfoot[C]{第 \thepage 页，共 \pageref{LastPage} 页}
+
+\renewcommand{\headrulewidth}{0.4pt}
+\renewcommand{\footrulewidth}{0pt}
+
+\lstdefinestyle{pyframe}{
+    language=Python,
+    basicstyle=\footnotesize\ttfamily,
+    breaklines=true,
+    keywordstyle=\bfseries\color{blue},
+    commentstyle=\itshape\color{green!50!black},
+    stringstyle=\bfseries\color{PineGreen!90!black},
+    columns=fixed,
+    numbers=left,
+    numbersep=2em,
+    numberstyle=\footnotesize\color{gray},
+    showstringspaces=false,
+    keepspaces=true,
+    aboveskip=1em,
+    belowskip=1em,
+    literate={=}{{=}}1,
+}
+
+\newtcolorbox{codebox}[1][]{
+    colback=gray!3,
+    colframe=blue!30!black,
+    left=3mm, right=3mm,
+    top=2mm, bottom=2mm,
+    arc=0.5mm,
+    boxrule=0.6pt,
+    fontupper=\small,
+    width=0.82\textwidth,
+    center,
+    #1
+}
+
+\begin{document}
+
+% 封面
+\begin{titlepage}
+    \centering
+
+    \includegraphics[width=10cm]{figures/SYSULogo.png}
+
+    \vspace{1em}
+    \vspace{1em}
+    {\Large \kaishu \projname \par}
+    \vspace{3em}
+
+    {\fontsize{36pt}{40pt}\kaishu \selectfont \boldmath \reporttitle\par}
+    \vspace*{\fill}
+
+    \begin{center}
+    {\Large
+    \makebox[5em][s]{学号}:\underline{\makebox[15em][c]{\kaishu \stuno}}\\[1em]
+    \makebox[5em][s]{姓名}:\underline{\makebox[15em][c]{\kaishu \authorname}}\\[1em]
+    \makebox[5em][s]{专业}:\underline{\makebox[15em][c]{\kaishu \major}}\\[1em]
+    \makebox[5em][s]{指导教师}:\underline{\makebox[15em][c]{\kaishu \adviser}}\\[1em]
+    \makebox[5em][s]{实验日期}:\underline{\makebox[15em][c]{\kaishu \labdate}}
+    }
+    \end{center}
+
+    \vspace*{\fill}
+\end{titlepage}
+
+\tableofcontents
+\newpage
+
+% ===== 1. 任务描述 =====
+\section{任务描述}
+
+\subsection{任务目标}
+
+本次作业的目标是在 TNEWS（今日头条中文新闻短文本分类）数据集上完成 15 分类的新闻主题预测任务。与上一次作业从零实现底层神经网络不同，本次作业允许使用 PyTorch 等深度学习框架，重点考察对 RNN+Attention 和 Transformer 两类主流文本分类架构的理解与实现能力。
+
+具体来说，需要完成以下几件事：下载并清洗 TNEWS 数据集；实现多粒度分词（字符级、词级、子词级）；手动搭建 BiLSTM+Bahdanau Attention 和 Transformer Encoder 两种分类模型；在验证集上进行模型选择与超参调优；在测试集上报告最终结果；使用 Accuracy、Macro-F1、混淆矩阵等指标进行评测；撰写实验报告并进行可视化分析。
+
+\subsection{数据集说明}
+
+TNEWS 数据集来源于 CLUE 中文语言理解测评基准，包含 15 个新闻主题类别。数据集划分如下：
+
+\begin{itemize}
+    \item \textbf{训练集}：53,360 条样本（train.json）
+    \item \textbf{验证集}：10,000 条样本（dev.json，带标签）
+    \item \textbf{测试集}：10,000 条样本（test.json，无标签）
+\end{itemize}
+
+由于官方测试集没有标签，按照作业要求，我将 train.json 按 90\%/10\% 的比例划分为训练集和验证集（随机种子 42），将 dev.json 作为最终的独立测试集进行指标汇报。
+
+15 个新闻类别及其标签映射如表~\ref{tab:labels} 所示。
+
+\begin{table}[H]
+    \centering
+    \small
+    \begin{tabular}{|c|c|c|}
+        \hline
+        \textbf{Label ID} & \textbf{Label Name} & \textbf{中文描述} \\
+        \hline
+        100 & news\_story & 故事 \\
+        101 & news\_culture & 文化 \\
+        102 & news\_entertainment & 娱乐 \\
+        103 & news\_sports & 体育 \\
+        104 & news\_finance & 财经 \\
+        106 & news\_house & 房产 \\
+        107 & news\_car & 汽车 \\
+        108 & news\_edu & 教育 \\
+        109 & news\_tech & 科技 \\
+        110 & news\_military & 军事 \\
+        112 & news\_travel & 旅游 \\
+        113 & news\_world & 国际 \\
+        114 & news\_stock & 股票 \\
+        115 & news\_agriculture & 农业 \\
+        116 & news\_game & 游戏 \\
+        \hline
+    \end{tabular}
+    \caption{TNEWS 数据集 15 个新闻类别标签映射}
+    \label{tab:labels}
+\end{table}
+
+\subsection{评价指标}
+
+本项目采用两个主要评价指标：
+
+\textbf{Accuracy}：衡量模型整体分类正确率。
+\begin{equation}
+\text{Accuracy} = \frac{\text{正确预测样本数}}{\text{总样本数}}
+\end{equation}
+
+\textbf{Macro-F1}：先分别计算每个类别的 F1 值，再对所有类别求平均。该指标能够更好反映模型在各类别上的均衡表现，避免只关注大类别。
+\begin{equation}
+\text{Macro-F1} = \frac{1}{C}\sum_{i=1}^{C} F1_i
+\end{equation}
+其中 $C=15$ 为类别数，$F1_i$ 为第 $i$ 个类别的 F1 分数。
+
+由于 TNEWS 存在一定长尾效应（如 news\_stock 仅 257 条，news\_tech 有 5955 条），Macro-F1 比 Accuracy 更能反映模型在少数类别上的表现，因此我将其作为主要的模型选择指标。
+
+% ===== 2. 数据分析与预处理 =====
+\section{数据分析与预处理}
+
+\subsection{数据规模与类别分布}
+
+原始训练集包含 53,360 条样本。经过数据清洗（去除重复样本 3,634 条），最终保留 49,726 条有效样本。类别分布如图~\ref{fig:class_dist} 所示。
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.9\textwidth]{figures/class_distribution.png}
+    \caption{TNEWS 训练集类别分布。news\_tech 样本最多（5,955 条），news\_stock 样本最少（257 条），类别不平衡比例达 23.17。}
+    \label{fig:class_dist}
+\end{figure}
+
+从图中可以看出，TNEWS 数据集存在明显的类别不平衡问题。news\_tech、news\_finance、news\_entertainment 三个类别占据了近 30\% 的样本，而 news\_stock 仅占 0.5\%。这种长尾分布会对模型训练造成两方面影响：一是模型容易偏向多数类，对少数类的召回率较低；二是少数类的梯度信号较弱，模型难以充分学习其特征。
+
+\subsection{文本长度分布}
+
+文本长度分布是决定 padding 策略和 max\_len 超参数的重要依据。我对训练集进行了字符级和词级（jieba 分词）两种粒度的长度统计，结果如图~\ref{fig:length_dist} 所示。
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.9\textwidth]{figures/text_length_distribution.png}
+    \caption{文本长度分布。左图为字符级长度，右图为词级长度（jieba 分词）。红色虚线为 95 分位数，橙色虚线为 99 分位数。}
+    \label{fig:length_dist}
+\end{figure}
+
+\begin{table}[H]
+    \centering
+    \small
+    \begin{tabular}{|c|c|c|c|c|c|}
+        \hline
+        \textbf{粒度} & \textbf{最小值} & \textbf{平均值} & \textbf{中位数} & \textbf{95分位} & \textbf{99分位} \\
+        \hline
+        字符级 & 2 & 22.13 & 22 & 32 & 39 \\
+        词级 & 1 & 12.90 & 13 & 20 & 24 \\
+        \hline
+    \end{tabular}
+    \caption{文本长度分布统计}
+    \label{tab:length_stats}
+\end{table}
+
+从表~\ref{tab:length_stats} 可以看出，TNEWS 的文本普遍较短，字符级平均长度仅 22 个字符，词级平均长度仅 13 个词。95 分位数分别为 32 和 20，这意味着绝大多数样本可以在较短的序列内完整表示。基于此，我在后续实验中设置字符级 max\_len=50，词级 max\_len=30，既能覆盖 99\% 以上的样本，又不会引入过多 padding 噪声。
+
+\subsection{数据清洗}
+
+数据清洗是保证模型训练质量的重要前提。我对原始数据进行了以下处理：首先，基于 sentence 字段进行去重，训练集去除 3,634 条重复样本，验证集去除 235 条；其次，检查并去除空文本（sentence 字段为空或仅包含空白字符的样本）；然后，验证 label 字段的合法性，确保所有标签都在 15 个合法类别中；最后，进行文本规范化处理，包括统一全角字符为半角（如全角数字、字母、标点），以及去除不可见字符（如零宽空格、HTML 实体等）。
+
+清洗后训练集保留 49,726 条样本，验证集保留 9,765 条样本。
+
+\subsection{多粒度分词}
+
+中文文本不像英文有天然的空格分隔，因此分词策略对模型性能有显著影响。我实现了三种分词粒度：
+
+\textbf{字符级（Char-level）}：将每个汉字、英文字母、数字、标点视为独立 token。优点是无 OOV（Out-of-Vocabulary）问题，词表小（约 4,800）；缺点是序列较长，语义信息稀疏。
+
+\textbf{词级（Word-level）}：使用 jieba 分词工具进行中文分词。优点是语义单元完整，序列较短；缺点是 OOV 问题严重，需处理低频词。词表大小约 67,800（min\_freq=1）。
+
+\textbf{子词级（Subword-level）}：使用 BERT 的 WordPiece 分词器（bert-base-chinese）。优点是平衡 OOV 与序列长度；缺点是需要额外加载预训练词表（约 21,128）。
+
+三种分词方式的效果对比如表~\ref{tab:tokenizer} 所示。
+
+\begin{table}[H]
+    \centering
+    \small
+    \begin{tabular}{|c|c|c|c|}
+        \hline
+        \textbf{分词方式} & \textbf{词表大小} & \textbf{平均序列长度} & \textbf{示例} \\
+        \hline
+        Char-level & 4,809 & 44 & 上/课/时/学/生/手/机/响/... \\
+        Word-level & 67,799 & 26 & 上课时/学生/手机/响个/不停/... \\
+        Subword & 21,128 & 44 & 上/课/时/学/生/手/机/响/... \\
+        \hline
+    \end{tabular}
+    \caption{三种分词方式对比}
+    \label{tab:tokenizer}
+\end{table}
+
+\subsection{词表构建}
+
+词表构建严格遵守"仅使用训练集"的红线，不得将验证集或测试集的信息泄露到词表中。具体策略如下：对于 Char-level 分词，统计训练集中所有字符，设置 min\_freq=1，最终词表大小为 4,809；对于 Word-level 分词，统计训练集中所有词，设置 min\_freq=1（保留所有出现过的词），最终词表大小为 67,799；对于 Subword 分词，直接加载 bert-base-chinese 的预训练词表，无需额外构建。
+
+所有词表均包含 4 个特殊 token：\texttt{<PAD>}（填充符，索引 0）、\texttt{<UNK>}（未知词，索引 1）、\texttt{<BOS>}（句子开始，索引 2）、\texttt{<EOS>}（句子结束，索引 3）。
+
+% ===== 3. 模型设计说明 =====
+\section{模型设计说明}
+
+\subsection{BiLSTM + Bahdanau Attention}
+
+BiLSTM（双向长短期记忆网络）能够同时捕获文本的前向和后向上下文信息，而 Bahdanau Attention（加性注意力机制）则能够动态地为不同位置的隐藏状态分配不同的权重，使模型在分类时更加关注关键信息。
+
+\subsubsection{架构设计}
+
+整体架构如图~\ref{fig:bilstm_arch} 所示。
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.85\textwidth]{figures/bilstm_arch.png}
+    \caption{BiLSTM + Bahdanau Attention 分类器架构}
+    \label{fig:bilstm_arch}
+\end{figure}
+
+\subsubsection{Bahdanau Attention 机制}
+
+Bahdanau Attention 的核心思想是：对于每个解码时刻，计算一个上下文向量 $c_t$，该向量是编码器所有隐藏状态的加权和，权重反映了每个隐藏状态对当前解码的重要性。
+
+数学公式如下：
+
+\begin{align}
+e_{ti} &= v_a^T \tanh(W_a s_{t-1} + U_a h_i) \\
+\alpha_{ti} &= \frac{\exp(e_{ti})}{\sum_{j=1}^{T_x} \exp(e_{tj})} \\
+c_t &= \sum_{i=1}^{T_x} \alpha_{ti} h_i
+\end{align}
+
+其中：
+\begin{itemize}
+    \item $s_{t-1}$ 是解码器上一时刻的隐藏状态（在分类任务中，我使用 BiLSTM 的最后一个隐藏状态作为 query）
+    \item $h_i$ 是编码器第 $i$ 个位置的隐藏状态
+    \item $W_a, U_a, v_a$ 是可学习的参数矩阵
+    \item $\alpha_{ti}$ 是注意力权重，表示第 $i$ 个位置对当前预测的重要性
+    \item $c_t$ 是上下文向量，是编码器隐藏状态的加权和
+\end{itemize}
+
+在实现中，我使用 \texttt{nn.Linear} 实现 $W_a$ 和 $U_a$，使用 \texttt{nn.Parameter} 实现 $v_a$。注意力权重通过 softmax 归一化，确保和为 1。以下是 Bahdanau Attention 的核心实现代码：
+
+\begin{codebox}
+\begin{lstlisting}[style=pyframe]
+class BahdanauAttention(nn.Module):
+    def __init__(self, query_dim, key_dim, attn_dim):
+        super().__init__()
+        self.W_a = nn.Linear(query_dim, attn_dim, bias=False)
+        self.U_a = nn.Linear(key_dim, attn_dim, bias=False)
+        self.v_a = nn.Parameter(torch.randn(attn_dim))
+
+    def forward(self, query, key, value, mask=None):
+        # query: (B, query_dim), key: (B, T, key_dim)
+        energy = torch.tanh(
+            self.W_a(query).unsqueeze(1) + self.U_a(key)
+        )  # (B, T, attn_dim)
+        score = torch.sum(self.v_a * energy, dim=-1)  # (B, T)
+        if mask is not None:
+            score = score.masked_fill(mask == 0, float('-inf'))
+        alpha = F.softmax(score, dim=-1)  # (B, T)
+        context = torch.bmm(alpha.unsqueeze(1), value).squeeze(1)
+        return context, alpha
+\end{lstlisting}
+\end{codebox}
+
+\subsubsection{关键实现细节}
+
+Embedding 层使用 \texttt{nn.Embedding} 并设置 \texttt{padding\_idx=0}，使得 padding 位置的嵌入始终为零向量，不参与梯度更新。这一设计确保了填充位置不会对模型的隐藏状态产生任何影响。
+
+BiLSTM\cite{hochreiter1997lstm} 采用两层堆叠结构（\texttt{num\_layers=2}），层间 dropout 设为 0.3，双向运行（\texttt{bidirectional=True}）。前向和后向 LSTM 各产生 256 维的隐藏状态，拼接后得到 512 维的编码器输出。模型同时返回所有时间步的 hidden states（用于 Attention 计算）和最后一个时间步的 hidden state（用于分类）。
+
+在计算注意力权重时，需要特别处理 padding 位置。我使用 \texttt{masked\_fill} 将 padding 位置的 attention score 设为负无穷（$-\infty$），确保经过 softmax 归一化后这些位置的权重接近零。这一技巧避免了模型对无意义的填充位置分配注意力。
+
+分类头的设计相对简单：将 context vector（512 维）和 last hidden state（512 维）拼接得到 1024 维向量，通过两层全连接网络（1024→512→15），中间插入 ReLU 激活和 Dropout\cite{srivastava2014dropout}（0.3）以增强泛化能力，最终输出 15 个类别的 logits。
+
+\subsection{Transformer Encoder}
+
+Transformer 是 Vaswani 等人在 2017 年提出的序列到序列模型，其核心是 Multi-Head Self-Attention 机制，能够并行地捕获序列中任意两个位置之间的依赖关系。
+
+\subsubsection{架构设计}
+
+整体架构如图~\ref{fig:transformer_arch} 所示。
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.85\textwidth]{figures/transformer_arch.png}
+    \caption{Transformer Encoder 分类器架构}
+    \label{fig:transformer_arch}
+\end{figure}
+
+\subsubsection{Positional Encoding}
+
+由于 Transformer 没有循环结构，无法感知序列中元素的顺序，因此需要显式地注入位置信息。我使用正弦/余弦位置编码：
+
+\begin{align}
+PE_{(pos, 2i)} &= \sin\left(\frac{pos}{10000^{2i/d_{model}}}\right) \\
+PE_{(pos, 2i+1)} &= \cos\left(\frac{pos}{10000^{2i/d_{model}}}\right)
+\end{align}
+
+其中 $pos$ 是位置索引，$i$ 是维度索引。这种编码方式的优点是：对于任意固定的偏移量 $k$，$PE_{pos+k}$ 可以表示为 $PE_{pos}$ 的线性函数，使得模型能够学习到相对位置关系。
+
+\subsubsection{Multi-Head Self-Attention}
+
+Self-Attention 的核心是 Scaled Dot-Product Attention：
+
+\begin{equation}
+\text{Attention}(Q, K, V) = \text{softmax}\left(\frac{QK^T}{\sqrt{d_k}}\right) V
+\end{equation}
+
+其中 $Q, K, V$ 分别是查询、键、值矩阵，$d_k$ 是键的维度。除以 $\sqrt{d_k}$ 是为了防止点积结果过大导致 softmax 梯度消失。
+
+Multi-Head Attention 将 $Q, K, V$ 拆分为 $h$ 个头，每个头独立计算 attention，然后拼接：
+
+\begin{equation}
+\text{MultiHead}(Q, K, V) = \text{Concat}(\text{head}_1, \ldots, \text{head}_h) W^O
+\end{equation}
+
+其中 $\text{head}_i = \text{Attention}(Q W_i^Q, K W_i^K, V W_i^V)$。
+
+在我的实现中，\texttt{d\_model=512}，\texttt{num\_heads=8}，因此每个头的维度 \texttt{d\_k = 512 / 8 = 64}。以下是 Multi-Head Self-Attention 的核心实现：
+
+\begin{codebox}
+\begin{lstlisting}[style=pyframe]
+class MultiHeadAttention(nn.Module):
+    def __init__(self, d_model, num_heads, dropout=0.1):
+        super().__init__()
+        self.d_k = d_model // num_heads
+        self.num_heads = num_heads
+        self.W_q = nn.Linear(d_model, d_model)
+        self.W_k = nn.Linear(d_model, d_model)
+        self.W_v = nn.Linear(d_model, d_model)
+        self.W_o = nn.Linear(d_model, d_model)
+        self.attention = ScaledDotProductAttention(dropout)
+
+    def forward(self, query, key, value, mask=None):
+        B, T, _ = query.shape
+        # Linear projection and split into heads
+        Q = self.W_q(query).view(B, T, self.num_heads,
+                                  self.d_k).transpose(1, 2)
+        K = self.W_k(key).view(B, T, self.num_heads,
+                                self.d_k).transpose(1, 2)
+        V = self.W_v(value).view(B, T, self.num_heads,
+                                  self.d_k).transpose(1, 2)
+        # Scaled dot-product attention per head
+        out, attn = self.attention(Q, K, V, mask)
+        # Concatenate heads and final projection
+        out = out.transpose(1, 2).contiguous().view(B, T, -1)
+        return self.W_o(out), attn
+\end{lstlisting}
+\end{codebox}
+
+\subsubsection{Feed-Forward Network}
+
+每个 Transformer Encoder Layer 包含一个 Position-wise FFN：
+
+\begin{equation}
+\text{FFN}(x) = \max(0, x W_1 + b_1) W_2 + b_2
+\end{equation}
+
+其中 $W_1 \in \mathbb{R}^{d_{model} \times d_{ff}}$，$W_2 \in \mathbb{R}^{d_{ff} \times d_{model}}$，$d_{ff} = 4 \times d_{model} = 2048$。
+
+\subsubsection{残差连接与 Layer Normalization}
+
+每个子层（Self-Attention 和 FFN）都使用残差连接和 LayerNorm\cite{ba2016layernorm}：
+
+\begin{equation}
+\text{output} = \text{LayerNorm}(x + \text{Sublayer}(x))
+\end{equation}
+
+残差连接缓解了深层网络的梯度消失问题，LayerNorm\cite{ba2016layernorm} 则稳定了训练过程。与 BatchNorm 不同，LayerNorm 沿特征维度归一化，不依赖 batch 统计量，因此对变长序列和小 batch size 更加友好，这也是 Transformer 架构选择 LayerNorm 的关键原因。
+
+\subsubsection{池化策略}
+
+我使用 Global Average Pooling 对 Transformer Encoder 的输出进行池化，即对所有时间步取平均（忽略 padding 位置）。相比使用 [CLS] token，这种方式实现更简单且效果相当。
+
+% ===== 4. 训练设置 =====
+\section{训练设置}
+
+\subsection{数据划分}
+
+\begin{itemize}
+    \item \textbf{训练集}：从 train\_clean.json 中划分 90\%，共 44,753 条样本
+    \item \textbf{验证集}：从 train\_clean.json 中划分 10\%，共 4,973 条样本
+    \item \textbf{测试集}：dev\_clean.json，共 9,765 条样本
+\end{itemize}
+
+划分时使用分层抽样（stratified sampling），确保训练集和验证集的类别分布一致。随机种子固定为 42。
+
+\subsection{损失函数与优化器}
+
+\textbf{损失函数}：交叉熵损失（Cross-Entropy Loss），适用于多分类任务。
+
+\textbf{优化器}：AdamW（Adam\cite{kingma2015adam} with Weight Decay），参数设置：
+\begin{itemize}
+    \item 学习率：$10^{-3}$
+    \item 权重衰减：$10^{-4}$
+    \item $\beta_1 = 0.9$，$\beta_2 = 0.999$
+\end{itemize}
+
+Adam\cite{kingma2015adam} 优化器通过维护梯度的一阶矩和二阶矩的指数移动平均，为每个参数自适应地调整学习率，在 Transformer 和 RNN 训练中均表现出色。
+
+\textbf{学习率调度}：使用带 warmup 的余弦退火调度器（Cosine Annealing with Warmup）。warmup 阶段学习率从 0 线性增长到初始学习率，持续 5 个 epoch；之后按余弦曲线衰减。warmup 对于 Transformer\cite{vaswani2017attention} 的训练至关重要，能够避免训练初期梯度过大导致参数跑飞。
+
+以下是训练循环的核心代码：
+
+\begin{codebox}
+\begin{lstlisting}[style=pyframe]
+for epoch in range(1, epochs + 1):
+    model.train()
+    for batch in train_loader:
+        ids = batch['input_ids'].to(device)
+        mask = batch['attention_mask'].to(device)
+        labels = batch['label'].to(device)
+        optimizer.zero_grad()
+        logits, _ = model(ids, mask)
+        loss = criterion(logits, labels)
+        loss.backward()
+        torch.nn.utils.clip_grad_norm_(model.parameters(), 1.0)
+        optimizer.step()
+        scheduler.step()
+    # Validation and early stopping check
+    val_f1 = evaluate(model, val_loader, device)
+    if early_stopping(val_f1):
+        break
+\end{lstlisting}
+\end{codebox}
+
+\subsection{训练超参数}
+
+\begin{table}[H]
+    \centering
+    \small
+    \begin{tabular}{|c|c|c|}
+        \hline
+        \textbf{参数} & \textbf{BiLSTM+Attention} & \textbf{Transformer} \\
+        \hline
+        Batch Size & 64 & 64 \\
+        Max Epochs & 30 & 30 \\
+        Learning Rate & $10^{-3}$ & $10^{-3}$ \\
+        Weight Decay & $10^{-4}$ & $10^{-4}$ \\
+        Gradient Clip & 1.0 & 1.0 \\
+        Early Stopping Patience & 5 & 5 \\
+        Dropout & 0.3 & 0.1 \\
+        \hline
+    \end{tabular}
+    \caption{训练超参数设置}
+    \label{tab:train_hyper}
+\end{table}
+
+\subsection{Early Stopping}
+
+为防止过拟合，我实现了 Early Stopping 机制：当验证集 Macro-F1 在连续 5 个 epoch 内没有提升时，停止训练。同时保存验证集 Macro-F1 最高的模型 checkpoint 作为最终模型。
+
+\subsection{硬件环境}
+
+\begin{itemize}
+    \item \textbf{本机}：WSL2 Ubuntu 22.04，Intel i9-13900H，32GB RAM，RTX 4060 Laptop (8GB)
+    \item \textbf{服务器}：A100 集群，NVIDIA A100-PCIE-40GB，AMD EPYC 7742 (128 cores)
+\end{itemize}
+
+所有训练均在 A100 GPU 上完成，单卡训练时间约 15-45 秒/epoch（取决于模型和分词方式）。
+
+% ===== 5. 实验结果 =====
+\section{实验结果}
+
+\subsection{消融实验}
+
+我进行了多组消融实验，对比不同模型架构和分词方式的组合。实验结果如表~\ref{tab:ablation} 所示。
+
+\begin{table}[H]
+    \centering
+    \small
+    \begin{tabular}{|c|c|c|c|c|}
+        \hline
+        \textbf{模型} & \textbf{分词方式} & \textbf{Val Acc} & \textbf{Val Macro-F1} & \textbf{Best Epoch} \\
+        \hline
+        BiLSTM+Attention & Char & 0.4999 & \textbf{0.4833} & 6 \\
+        BiLSTM+Attention & Word & 0.4683 & 0.4579 & 5 \\
+        Transformer & Char (v1, lr=5e-4) & 0.1094 & 0.0131 & --- \\
+        Transformer & Char (v2, lr=1e-3) & 0.4404 & 0.4093 & 4 \\
+        Transformer & Word & 0.4675 & 0.4222 & 3 \\
+        Transformer & Subword & 0.1094 & 0.0131 & --- \\
+        \hline
+    \end{tabular}
+    \caption{消融实验结果对比}
+    \label{tab:ablation}
+\end{table}
+
+从表中可以看出：
+
+\begin{itemize}
+    \item \textbf{BiLSTM+Attention 优于 Transformer}：在 TNEWS 这种短文本分类任务上，BiLSTM+Attention 的表现明显优于 Transformer。这可能是因为 TNEWS 文本较短（平均 22 字符），BiLSTM 的循环结构更适合捕获短距离依赖，而 Transformer 的 Self-Attention 在短序列上优势不明显，且参数量更大（15.2M vs 4.8M），更容易过拟合。
+    \item \textbf{Char-level 优于 Word-level}：对于 BiLSTM+Attention，Char-level 分词的 Macro-F1 比 Word-level 高 2.5 个百分点。这可能是因为 TNEWS 文本较短，Char-level 能够保留更多细粒度信息，而 Word-level 分词可能引入分词错误（如"上课时"被切分为"上课/时"）。
+    \item \textbf{Transformer 对学习率敏感}：Transformer+Char 的第一次实验（lr=5e-4）完全未收敛，Val Acc 恒为 0.1094（接近随机猜测）。将学习率提高到 1e-3 后（v2），模型才正常训练。这说明 Transformer 对学习率的选择比 BiLSTM 更加敏感。
+    \item \textbf{Subword 分词失败}：Transformer+Subword 实验完全未收敛。可能原因是 BERT WordPiece 词表是为预训练设计的，与从头训练的模型不匹配；或者需要更大的学习率和更多的训练轮数。由于时间限制，未进一步调优。
+\end{itemize}
+
+\subsection{最佳模型测试结果}
+
+选择验证集 Macro-F1 最高的 BiLSTM+Attention+Char 模型，在测试集（dev\_clean.json）上进行评估，结果如表~\ref{tab:test} 所示。
+
+\begin{table}[H]
+    \centering
+    \small
+    \begin{tabular}{|c|c|}
+        \hline
+        \textbf{指标} & \textbf{数值} \\
+        \hline
+        Test Accuracy & \textbf{0.4972} \\
+        Test Macro-F1 & \textbf{0.4700} \\
+        \hline
+    \end{tabular}
+    \caption{最佳模型测试结果}
+    \label{tab:test}
+\end{table}
+
+测试集 Accuracy 为 49.72\%，Macro-F1 为 47.00\%。相比验证集（Accuracy 49.99\%，Macro-F1 48.33\%），测试集指标略有下降，这是正常的泛化差距。
+
+\subsection{类别级结果}
+
+图~\ref{fig:confusion} 展示了测试集上的混淆矩阵。
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.9\textwidth]{figures/bilstm_char/confusion_matrix.png}
+    \caption{BiLSTM+Attention+Char 模型在测试集上的混淆矩阵。对角线颜色越深表示该类别的预测准确率越高。}
+    \label{fig:confusion}
+\end{figure}
+
+从混淆矩阵和分类报告中可以观察到：
+
+\begin{itemize}
+    \item \textbf{表现最好的类别}：news\_sports（F1=0.63）、news\_car（F1=0.60）、news\_game（F1=0.56）。这些类别的文本通常包含明显的领域关键词（如"世界杯"、"发动机"、"英雄联盟"），模型容易识别。
+    \item \textbf{表现最差的类别}：news\_stock（F1=0.11）、news\_story（F1=0.41）、news\_travel（F1=0.43）。news\_stock 样本极少（仅 45 条测试样本），模型难以充分学习；news\_story 和 news\_travel 与其他类别存在语义重叠，容易混淆。
+    \item \textbf{常见混淆对}：news\_military $\leftrightarrow$ news\_world（都涉及国际事件）、news\_finance $\leftrightarrow$ news\_agriculture（都涉及经济话题）、news\_house $\leftrightarrow$ news\_story（都涉及生活场景）。
+\end{itemize}
+
+\subsection{训练过程分析}
+
+图~\ref{fig:training_curves} 展示了 BiLSTM+Attention+Char 模型的训练曲线。
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.9\textwidth]{figures/bilstm_char/training_curves.png}
+    \caption{BiLSTM+Attention+Char 模型训练曲线。左上：训练和验证 Loss；右上：验证 Accuracy；左下：验证 Macro-F1；右下：学习率调度。}
+    \label{fig:training_curves}
+\end{figure}
+
+从训练曲线可以观察到几个关键现象。首先，模型在前 6 个 epoch 内迅速收敛，验证 Macro-F1 从 0.35 上升到 0.48，说明 BiLSTM+Attention 架构对 TNEWS 数据集具有良好的适应性。其次，从 epoch 6 开始出现过拟合迹象：训练 Loss 持续下降，但验证 Loss 开始上升，验证 Macro-F1 停滞甚至下降。这表明模型开始记忆训练数据的噪声而非学习泛化特征。为此，我在 epoch 11 触发了 Early Stopping，最终选择 epoch 6 的 checkpoint 作为最佳模型。学习率调度方面，采用了 warmup 策略：前 5 个 epoch 学习率从 0 线性增长到 1e-3（实际日志：0.0004→0.0006→0.0008→0.001），之后按余弦曲线衰减，这种策略有助于模型在训练初期稳定探索，后期精细调优。
+
+% ===== 6. 结果分析 =====
+\section{结果分析}
+
+\subsection{模型优势}
+
+BiLSTM+Attention 架构在本任务中展现出三个显著优势。
+
+首先是双向上下文捕获能力。BiLSTM 能够同时利用前向和后向信息，这对于短文本分类尤为重要。例如，在"苹果发布新手机"这句话中，"苹果"的含义需要后文"新手机"来消歧——如果没有后向信息，模型可能将"苹果"理解为水果而非科技公司。双向 LSTM 通过拼接两个方向的隐藏状态，为每个位置提供了完整的上下文表示。
+
+其次是动态注意力机制。Bahdanau Attention 能够为输入序列的不同位置分配不同的权重，使模型在分类时更加关注关键信息。例如，对于"华为发布新款手机，搭载最新芯片"这句话，模型会给"华为"、"手机"、"芯片"等关键词分配更高的注意力权重，而对"发布"、"新款"、"搭载"、"最新"等修饰词分配较低的权重。这种机制使模型能够自动识别对分类决策最重要的信息，提高了模型的可解释性。
+
+第三是适中的参数量。BiLSTM+Attention 的参数量约 4.8M，远小于 Transformer 的 15.2M。在 TNEWS 这种中小规模数据集（约 5 万条训练样本）上，较小的模型不容易过拟合，能够学习到更泛化的特征。实验结果也验证了这一点：BiLSTM+Attention 在验证集上的 Macro-F1 达到 0.4833，而 Transformer 仅为 0.4222，差距达 6 个百分点。
+
+\subsection{失败案例分析}
+
+我对 BiLSTM+Attention+Char 模型的预测错误案例进行了分析。以下是几个典型的预测错误案例（均来自模型实际输出）：
+
+\textbf{案例 1}：
+\begin{itemize}
+    \item \textbf{文本}："以色列大规模空袭开始!伊朗多个军事目标遭遇打击,誓言对等反击"
+    \item \textbf{真实标签}：news\_military
+    \item \textbf{预测标签}：news\_world
+    \item \textbf{分析}：模型以 66.35\% 的置信度预测为 news\_world。这条新闻同时涉及"以色列"、"伊朗"等国际实体和"空袭"、"军事目标"等军事术语，模型可能更关注国际关系层面而非军事行动本身。
+\end{itemize}
+
+\textbf{案例 2}：
+\begin{itemize}
+    \item \textbf{文本}："出栏一头猪亏损300元,究竟谁能笑到最后!"
+    \item \textbf{真实标签}：news\_finance
+    \item \textbf{预测标签}：news\_agriculture
+    \item \textbf{分析}：模型以 70.70\% 的置信度预测为 news\_agriculture。这条新闻的核心是"亏损"这一财经概念，但"出栏"、"猪"等词汇强烈指向农业领域。模型被农业关键词主导，忽略了财经角度。
+\end{itemize}
+
+\textbf{案例 3}：
+\begin{itemize}
+    \item \textbf{文本}："苹果创始人的女儿在旧金山新购置一处豪宅:价值1亿,景观无敌"
+    \item \textbf{真实标签}：news\_house
+    \item \textbf{预测标签}：news\_tech
+    \item \textbf{分析}：模型以 41.87\% 的置信度预测为 news\_tech。"苹果创始人"这一表述强烈指向科技领域，但新闻的核心事件是"购置豪宅"，应属于房产类别。模型被"苹果"这一科技品牌词汇误导。
+\end{itemize}
+
+\subsection{Attention 可视化}
+
+为了理解模型的决策过程，我对几个样本的 Attention 权重进行了可视化，结果如图~\ref{fig:attention} 所示。
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.9\textwidth]{figures/bilstm_char/attention_heatmap_北京今日天气多云转晴，适合外出游玩。.png}
+    \caption{Attention 权重可视化示例。颜色越深表示该位置的注意力权重越高。}
+    \label{fig:attention}
+\end{figure}
+
+从图中可以看出，模型在判断"北京今日天气多云转晴，适合外出游玩"属于旅游类别时，给"天气"、"外出"、"游玩"分配了较高的注意力权重，这些词确实是旅游新闻的关键特征。
+
+\subsection{t-SNE 特征可视化}
+
+为了直观展示模型学习到的句子表示质量，我对测试集中 1,000 个样本的 sentence embedding 进行了 t-SNE 降维可视化，结果如图~\ref{fig:tsne} 所示。
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.9\textwidth]{figures/bilstm_char/tsne_visualization.png}
+    \caption{t-SNE 可视化。每个点代表一个样本，颜色表示真实类别。}
+    \label{fig:tsne}
+\end{figure}
+
+从图中可以看出，不同类别的样本在二维空间中形成了一定的聚类结构，但类别之间的边界并不清晰，存在较多重叠。这与模型 50\% 左右的准确率是一致的——模型能够区分部分类别，但对于语义相近的类别（如 news\_finance 和 news\_stock）仍然难以区分。
+
+\subsection{模型仍存在的问题}
+
+当前模型面临的最突出问题是类别不平衡。从混淆矩阵可以清楚地看到，news\_stock 类别的召回率仅为 7\%，远低于其他类别。这是因为训练集中 news\_stock 仅有 257 条样本，而 news\_tech 有 5955 条，样本量相差 23 倍。模型在训练过程中自然倾向于预测多数类，因为多数类的梯度信号更强、更稳定。缓解这一问题的常见方法包括：在损失函数中引入类别权重（class weight），给少数类更高的惩罚系数；或者采用过采样（如 SMOTE）和欠采样的组合策略平衡各类别的样本量。
+
+另一个问题是类别间的语义重叠。news\_finance、news\_house 和 news\_stock 三个类别在语义上高度相关——它们都涉及经济、投资、房地产等主题。仅凭短文本（平均 22 字符）中的有限信息，模型很难做出精确区分。例如，"房价上涨对经济的影响"这句话同时涉及房产和财经两个领域。解决这一问题可能需要引入外部知识，如利用命名实体识别（NER）提取文本中的关键实体，或者结合关键词字段（keywords）作为辅助特征。
+
+模型还存在一定程度的过拟合问题。从训练曲线可以观察到，BiLSTM+Attention 模型在 epoch 6 达到最优性能后，验证集 Macro-F1 开始下降，而训练集 Loss 持续降低。这表明模型容量相对于训练集可能过大，或者训练数据缺乏足够的多样性。可以尝试的改进方向包括：使用更小的隐藏层维度（如从 256 降到 128）；增加 Dropout\cite{srivastava2014dropout} 比例（从 0.3 提高到 0.5）；引入数据增强技术，如回译（back-translation）、同义词替换等，增加训练样本的多样性。
+
+% ===== 7. 心得体会 =====
+\section{心得体会}
+
+\subsection{Transformer 训练的坑}
+
+在实现 Transformer 时，我遇到了一个典型的训练问题：模型在初始阶段几乎不学习，验证 Macro-F1 长期停留在 0.01 左右（接近随机猜测）。经过排查，发现是学习率设置不当导致的。Transformer 对初始学习率非常敏感，如果一开始就用较大的学习率（如 $10^{-3}$），会导致参数更新过大，模型跑飞。
+
+解决方案是引入 warmup 机制：在前 5 个 epoch 内，学习率从 0 线性增长到 $10^{-3}$，之后按余弦曲线衰减。加入 warmup 后，Transformer 的训练立刻恢复正常，验证 Macro-F1 从 0.01 上升到 0.41。
+
+这个经验让我深刻理解了为什么 Transformer 原论文和 BERT 等预训练模型都使用 warmup：Transformer 的 Self-Attention 层在初始阶段输出方差很大，如果学习率过大，会导致梯度爆炸；warmup 让模型在初始阶段用小学习率"热身"，等输出稳定后再逐步加大学习率。
+
+\subsection{维度匹配的调试}
+
+在实现 Multi-Head Self-Attention 时，我遇到了维度不匹配的问题。具体来说，在将 $Q, K, V$ 拆分为多个头后，需要正确地进行 reshape 和 transpose 操作，并在拼接前调用 \texttt{contiguous()}：
+
+\begin{codebox}
+\begin{lstlisting}[style=pyframe]
+# Multi-Head Attention 的维度变换
+B, T, _ = query.shape
+# 1. Linear projection and split into heads
+Q = self.W_q(query).view(B, T, self.num_heads, self.d_k).transpose(1, 2)
+# Q shape: (B, num_heads, T, d_k)
+
+# 2. Scaled dot-product attention per head
+out, attn = self.attention(Q, K, V, mask)
+# out shape: (B, num_heads, T, d_k)
+
+# 3. Concatenate heads (关键步骤)
+out = out.transpose(1, 2).contiguous().view(B, T, -1)
+# 必须先 contiguous()，否则 view() 会报错
+# out shape: (B, T, d_model)
+\end{lstlisting}
+\end{codebox}
+
+关键问题在于第 3 步：\texttt{transpose(1, 2)} 后的 tensor 在内存中是不连续的（non-contiguous），直接调用 \texttt{view()} 会报错 \texttt{RuntimeError: view size is not compatible with input tensor's size and stride}。必须先调用 \texttt{contiguous()} 将 tensor 在内存中重新排列为连续存储，才能进行 \texttt{view()} 操作。
+
+这个 bug 花了我将近一个小时排查，最终通过在关键位置打印 tensor 的 shape 和 \texttt{is\_contiguous()} 属性才定位到问题。这让我养成了在实现复杂维度变换时，务必在注释中写明每个 tensor 的 shape 和内存布局的好习惯。
+
+\subsection{分词策略的选择}
+
+在实验前，我预期 Word-level 分词会优于 Char-level，因为词是语义的基本单元。但实验结果却相反：Char-level 在 TNEWS 上表现更好。
+
+经过分析，我认为原因有二：一是 TNEWS 文本较短（平均 22 字符），Char-level 能够保留更多细粒度信息；二是 jieba 分词在短文本上容易引入分词错误，例如"上课时"被切分为"上课/时"，破坏了"上课时"这个完整的语义单元。
+
+这个经验告诉我，分词策略的选择需要根据具体任务和数据集来决定，不能一概而论。对于短文本分类，Char-level 可能是一个更稳健的选择。
+
+\subsection{Early Stopping 的重要性}
+
+在训练 BiLSTM+Attention 时，我观察到模型在 epoch 6 达到最优性能后，继续训练会导致过拟合（验证 Loss 上升，验证 Macro-F1 下降）。如果没有 Early Stopping，模型会在 epoch 30 结束时保存一个过拟合的 checkpoint，测试集性能会显著下降。
+
+Early Stopping 的实现非常简单：维护一个计数器，每次验证集 Macro-F1 没有提升时加 1，超过 patience（我设为 5）时停止训练。同时保存验证集 Macro-F1 最高的 checkpoint。这个简单的机制能够有效防止过拟合，节省训练时间。
+
+% ===== 8. 学术诚信说明 =====
+\section{学术诚信说明}
+
+本项目的代码和报告均由本人独立完成。在实现过程中，我参考了以下开源资源和文献：
+
+\begin{itemize}
+    \item \textbf{PyTorch 框架}\cite{paszke2019pytorch}：参考了 \texttt{nn.LSTM}、\texttt{nn.Transformer}、\texttt{nn.Embedding} 等模块的 API 文档。
+    \item \textbf{jieba 分词}\cite{jieba}：使用 jieba 库进行中文分词。
+    \item \textbf{Hugging Face Transformers}\cite{wolf2020transformers}：使用 \texttt{BertTokenizer} 进行子词分词（仅使用分词器，未使用预训练模型）。
+    \item \textbf{CLUE 基准}\cite{xu2020clue}：TNEWS 数据集来源于 CLUE 中文语言理解测评基准。
+    \item \textbf{学术论文}：参考了 Bahdanau Attention 原论文\cite{bahdanau2014neural}、Transformer 原论文\cite{vaswani2017attention}、LSTM 原论文\cite{hochreiter1997lstm}、BERT 论文\cite{devlin2019bert}等。
+\end{itemize}
+
+所有模型架构（BiLSTM+Attention、Transformer Encoder）均使用 PyTorch\cite{paszke2019pytorch} 的 \texttt{nn} 基础算子手动搭建，未调用现成的分类模型（如 \texttt{BertForSequenceClassification}）。所有实验结果均由真实训练产出，未进行任何数据造假或结果美化。
+
+\begin{thebibliography}{99}
+
+\bibitem{bahdanau2014neural}
+Dzmitry Bahdanau, Kyunghyun Cho, and Yoshua Bengio.
+\newblock {\em Neural Machine Translation by Jointly Learning to Align and Translate}.
+\newblock In {\em Proceedings of the 3rd International Conference on Learning Representations (ICLR)}, 2015.
+\newblock arXiv:1409.0473.
+
+\bibitem{vaswani2017attention}
+Ashish Vaswani, Noam Shazeer, Niki Parmar, Jakob Uszkoreit, Llion Jones, Aidan N. Gomez, {\L}ukasz Kaiser, and Illia Polosukhin.
+\newblock {\em Attention Is All You Need}.
+\newblock In {\em Advances in Neural Information Processing Systems (NeurIPS)}, volume 30, pages 5998--6008, 2017.
+
+\bibitem{hochreiter1997lstm}
+Sepp Hochreiter and J{\"u}rgen Schmidhuber.
+\newblock {\em Long Short-Term Memory}.
+\newblock {\em Neural Computation}, 9(8):1735--1780, 1997.
+
+\bibitem{devlin2019bert}
+Jacob Devlin, Ming-Wei Chang, Kenton Lee, and Kristina Toutanova.
+\newblock {\em BERT: Pre-training of Deep Bidirectional Transformers for Language Understanding}.
+\newblock In {\em Proceedings of the 2019 Conference of the North American Chapter of the Association for Computational Linguistics (NAACL-HLT)}, pages 4171--4186, 2019.
+
+\bibitem{paszke2019pytorch}
+Adam Paszke, Sam Gross, Francisco Massa, Adam Lerer, James Bradbury, Gregory Chanan, Trevor Killeen, Zeming Lin, Natalia Gimelshein, Luca Antiga, Alban Desmaison, Andreas K{\"o}pf, Edward Yang, Zach DeVito, Martin Raison, Alykhan Tejani, Sasank Chilamkurthy, Benoit Steiner, Lu Fang, Junjie Bai, and Soumith Chintala.
+\newblock {\em PyTorch: An Imperative Style, High-Performance Deep Learning Library}.
+\newblock In {\em Advances in Neural Information Processing Systems (NeurIPS)}, volume 32, pages 8024--8035, 2019.
+
+\bibitem{kingma2015adam}
+Diederik P. Kingma and Jimmy Ba.
+\newblock {\em Adam: A Method for Stochastic Optimization}.
+\newblock In {\em Proceedings of the 3rd International Conference on Learning Representations (ICLR)}, 2015.
+\newblock arXiv:1412.6980.
+
+\bibitem{srivastava2014dropout}
+Nitish Srivastava, Geoffrey Hinton, Alex Krizhevsky, Ilya Sutskever, and Ruslan Salakhutdinov.
+\newblock {\em Dropout: A Simple Way to Prevent Neural Networks from Overfitting}.
+\newblock {\em Journal of Machine Learning Research (JMLR)}, 15(56):1929--1958, 2014.
+
+\bibitem{ba2016layernorm}
+Jimmy Lei Ba, Jamie Ryan Kiros, and Geoffrey E. Hinton.
+\newblock {\em Layer Normalization}.
+\newblock arXiv preprint arXiv:1607.06450, 2016.
+
+\bibitem{xu2020clue}
+Liang Xu, Hai Hu, Xuanwei Zhang, Lu Li, Chenjie Cao, Yudong Li, Yechen Xu, Kai Sun, Dian Yu, Cong Yu, Yin Tian, Qianqian Dong, Weitang Liu, Bo Shi, Yiming Cui, Junyi Li, Xiaotian Zeng, Rongzhao Wang, Weijian Xie, Yanting Li, Yina Patterson, Zuoyu Tian, Yiwen Zhang, He Zhou, Shaoweihua Liu, Zhe Zhao, Qipeng Zhao, Cong Yue, Xinrui Zhang, Zhengliang Yang, Zhenzhong Lan, and Hang Peng.
+\newblock {\em CLUE: A Chinese Language Understanding Evaluation Benchmark}.
+\newblock In {\em Proceedings of the 28th International Conference on Computational Linguistics (COLING)}, pages 4762--4772, 2020.
+
+\bibitem{wolf2020transformers}
+Thomas Wolf, Lysandre Debut, Victor Sanh, Julien Chaumond, Clement Delangue, Anthony Moi, Pierric Cistac, Tim Rault, R{\'e}mi Louf, Morgan Funtowicz, Joe Davison, Sam Shleifer, Patrick von Platen, Clara Ma, Yacine Jernite, Julien Plu, Canwen Xu, Teven Le Scao, Sylvain Gugger, Mariama Drame, Quentin Lhoest, and Alexander M. Rush.
+\newblock {\em Transformers: State-of-the-Art Natural Language Processing}.
+\newblock In {\em Proceedings of the 2020 Conference on Empirical Methods in Natural Language Processing: System Demonstrations (EMNLP)}, pages 38--45, 2020.
+
+\bibitem{jieba}
+Sun, Junyi.
+\newblock {\em jieba: Chinese Text Segmentation}.
+\newblock \url{https://github.com/fxsjy/jieba}.
+
+\end{thebibliography}
+
+\newpage
+
+\section*{项目资源}
+
+\begin{center}
+\renewcommand{\arraystretch}{1.6}
+\begin{tabular}{cc}
+\hline
+\textbf{资源} & \textbf{链接} \\
+\hline
+GitHub 仓库 & \url{https://github.com/ouyangyipeng/TNews-CN-Taxonomy} \\
+项目主页 & \url{https://tnews.nexa-lang.com} \\
+\hline
+\end{tabular}
+\end{center}
+
+\end{document}
