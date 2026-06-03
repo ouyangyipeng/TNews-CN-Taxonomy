@@ -33,7 +33,7 @@ plt.rcParams['axes.unicode_minus'] = False
 from sklearn.manifold import TSNE
 from sklearn.metrics import confusion_matrix, classification_report
 
-from src.tokenizers import get_tokenizer
+from src.text_tokenizers import get_tokenizer
 from src.dataset import create_test_dataloader, load_jsonl, TNEWSDataset
 from src.models.bilstm_attention import BiLSTMAttention
 from src.models.transformer import TransformerClassifier
@@ -41,7 +41,7 @@ from src.models.transformer import TransformerClassifier
 
 def plot_training_curves(log_file: Path, output_dir: Path):
     """
-    绘制训练曲线
+    绘制训练曲线（单模型版本，保持兼容）
     
     Args:
         log_file: 训练日志 JSON 文件
@@ -96,6 +96,122 @@ def plot_training_curves(log_file: Path, output_dir: Path):
     output_path = output_dir / 'training_curves.png'
     plt.savefig(output_path, dpi=300, bbox_inches='tight')
     print(f"训练曲线已保存: {output_path}")
+    plt.close()
+
+
+def plot_multi_model_curves(log_dir: Path, output_dir: Path):
+    """
+    绘制多模型对比训练曲线（顶会风格）
+    
+    将多个模型的训练曲线绘制在同一张图上，方便对比。
+    
+    Args:
+        log_dir: 日志根目录
+        output_dir: 输出目录
+    """
+    import json
+    
+    # 定义要对比的模型及其样式
+    models = {
+        'bilstm_char': {'label': 'BiLSTM+Attn (Char)', 'color': '#1f77b4', 'ls': '-'},
+        'bilstm_word': {'label': 'BiLSTM+Attn (Word)', 'color': '#ff7f0e', 'ls': '--'},
+        'transformer_char_v2': {'label': 'Transformer (Char)', 'color': '#2ca02c', 'ls': '-.'},
+        'transformer_word': {'label': 'Transformer (Word)', 'color': '#d62728', 'ls': ':'},
+    }
+    
+    # 加载所有日志
+    logs = {}
+    for name, cfg in models.items():
+        log_path = log_dir / name / 'training_log.json'
+        if log_path.exists():
+            with open(log_path, 'r', encoding='utf-8') as f:
+                logs[name] = json.load(f)
+    
+    if not logs:
+        print("没有找到可用的训练日志")
+        return
+    
+    fig, axes = plt.subplots(2, 2, figsize=(14, 10))
+    
+    # 1. Val Loss 对比
+    ax1 = axes[0, 0]
+    for name, cfg in models.items():
+        if name in logs:
+            epochs = range(1, len(logs[name]['val_loss']) + 1)
+            ax1.plot(epochs, logs[name]['val_loss'], color=cfg['color'],
+                     linestyle=cfg['ls'], label=cfg['label'], linewidth=2, alpha=0.85)
+            # 标记最佳点
+            best_idx = np.argmin(logs[name]['val_loss'])
+            ax1.scatter([best_idx + 1], [logs[name]['val_loss'][best_idx]],
+                       color=cfg['color'], s=80, zorder=5, edgecolors='white', linewidths=1.5)
+    ax1.set_xlabel('Epoch', fontsize=12)
+    ax1.set_ylabel('Validation Loss', fontsize=12)
+    ax1.set_title('(a) Validation Loss', fontsize=13, fontweight='bold')
+    ax1.legend(fontsize=9, loc='upper right', framealpha=0.9)
+    ax1.grid(True, alpha=0.3, linestyle='--')
+    ax1.spines['top'].set_visible(False)
+    ax1.spines['right'].set_visible(False)
+    
+    # 2. Val Accuracy 对比
+    ax2 = axes[0, 1]
+    for name, cfg in models.items():
+        if name in logs:
+            epochs = range(1, len(logs[name]['val_accuracy']) + 1)
+            ax2.plot(epochs, logs[name]['val_accuracy'], color=cfg['color'],
+                     linestyle=cfg['ls'], label=cfg['label'], linewidth=2, alpha=0.85)
+            best_idx = np.argmax(logs[name]['val_accuracy'])
+            ax2.scatter([best_idx + 1], [logs[name]['val_accuracy'][best_idx]],
+                       color=cfg['color'], s=80, zorder=5, edgecolors='white', linewidths=1.5)
+    ax2.set_xlabel('Epoch', fontsize=12)
+    ax2.set_ylabel('Validation Accuracy', fontsize=12)
+    ax2.set_title('(b) Validation Accuracy', fontsize=13, fontweight='bold')
+    ax2.legend(fontsize=9, loc='lower right', framealpha=0.9)
+    ax2.grid(True, alpha=0.3, linestyle='--')
+    ax2.spines['top'].set_visible(False)
+    ax2.spines['right'].set_visible(False)
+    
+    # 3. Val Macro-F1 对比
+    ax3 = axes[1, 0]
+    for name, cfg in models.items():
+        if name in logs:
+            epochs = range(1, len(logs[name]['val_macro_f1']) + 1)
+            ax3.plot(epochs, logs[name]['val_macro_f1'], color=cfg['color'],
+                     linestyle=cfg['ls'], label=cfg['label'], linewidth=2, alpha=0.85)
+            best_idx = np.argmax(logs[name]['val_macro_f1'])
+            ax3.scatter([best_idx + 1], [logs[name]['val_macro_f1'][best_idx]],
+                       color=cfg['color'], s=80, zorder=5, edgecolors='white', linewidths=1.5)
+            # 标注最佳值
+            ax3.annotate(f'{logs[name]["val_macro_f1"][best_idx]:.4f}',
+                        xy=(best_idx + 1, logs[name]['val_macro_f1'][best_idx]),
+                        xytext=(5, 10), textcoords='offset points',
+                        fontsize=8, color=cfg['color'], fontweight='bold')
+    ax3.set_xlabel('Epoch', fontsize=12)
+    ax3.set_ylabel('Validation Macro-F1', fontsize=12)
+    ax3.set_title('(c) Validation Macro-F1', fontsize=13, fontweight='bold')
+    ax3.legend(fontsize=9, loc='lower right', framealpha=0.9)
+    ax3.grid(True, alpha=0.3, linestyle='--')
+    ax3.spines['top'].set_visible(False)
+    ax3.spines['right'].set_visible(False)
+    
+    # 4. Train Loss 对比
+    ax4 = axes[1, 1]
+    for name, cfg in models.items():
+        if name in logs:
+            epochs = range(1, len(logs[name]['train_loss']) + 1)
+            ax4.plot(epochs, logs[name]['train_loss'], color=cfg['color'],
+                     linestyle=cfg['ls'], label=cfg['label'], linewidth=2, alpha=0.85)
+    ax4.set_xlabel('Epoch', fontsize=12)
+    ax4.set_ylabel('Training Loss', fontsize=12)
+    ax4.set_title('(d) Training Loss', fontsize=13, fontweight='bold')
+    ax4.legend(fontsize=9, loc='upper right', framealpha=0.9)
+    ax4.grid(True, alpha=0.3, linestyle='--')
+    ax4.spines['top'].set_visible(False)
+    ax4.spines['right'].set_visible(False)
+    
+    plt.tight_layout()
+    output_path = output_dir / 'multi_model_curves.png'
+    plt.savefig(output_path, dpi=300, bbox_inches='tight')
+    print(f"多模型对比曲线已保存: {output_path}")
     plt.close()
 
 
@@ -345,10 +461,10 @@ def plot_tsne(
             s=30
         )
     
-    ax.set_xlabel('t-SNE Dimension 1', fontsize=11)
-    ax.set_ylabel('t-SNE Dimension 2', fontsize=11)
-    ax.set_title('t-SNE Visualization of Sentence Features', fontsize=14, fontweight='bold')
-    ax.legend(bbox_to_anchor=(1.05, 1), loc='upper left', fontsize=9)
+    ax.set_xlabel('t-SNE Dimension 1', fontsize=17)
+    ax.set_ylabel('t-SNE Dimension 2', fontsize=17)
+    ax.set_title('t-SNE Visualization of Sentence Features', fontsize=20, fontweight='bold')
+    ax.legend(bbox_to_anchor=(1.05, 1), loc='upper left', fontsize=15)
     
     plt.tight_layout()
     output_path = output_dir / 'tsne_visualization.png'
