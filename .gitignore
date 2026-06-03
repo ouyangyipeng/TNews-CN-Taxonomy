@@ -16,3 +16,13 @@ report/main.toc
 checkpoints/
 report.pdf
 .git/
+
+# 大文件（超过 GitHub 100MB 限制）
+models/
+packages/
+*.safetensors
+*.bin
+*.pt
+*.pth
+*.whl
+*.tar.gz
