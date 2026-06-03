@@ -22,7 +22,7 @@ import torch
 from torch.utils.data import Dataset, DataLoader
 from sklearn.model_selection import train_test_split
 
-from src.tokenizers import BaseTokenizer
+from src.text_tokenizers import BaseTokenizer
 
 
 class TNEWSDataset(Dataset):
@@ -206,7 +206,7 @@ def create_test_dataloader(
     max_len: int,
     batch_size: int = 32,
     num_workers: int = 0
-) -> DataLoader:
+) -> tuple[DataLoader, list]:
     """
     创建测试集 DataLoader（dev.json 作为最终测试集）
     
@@ -219,9 +219,24 @@ def create_test_dataloader(
     
     Returns:
         test_loader: 测试 DataLoader
+        labels: 标签列表（如果没有标签则为空列表）
     """
-    texts, labels = load_jsonl(test_file)
+    # 尝试加载测试数据，处理没有标签的情况
+    texts = []
+    labels = []
+    with open(test_file, 'r', encoding='utf-8') as f:
+        for line in f:
+            data = json.loads(line.strip())
+            texts.append(data['sentence'])
+            if 'label_id' in data:
+                labels.append(data['label_id'])
+    
     print(f"  加载测试数据: {len(texts)} 条")
+    print(f"  是否有标签: {len(labels) > 0}")
+    
+    # 如果没有标签，使用虚拟标签（-1）
+    if len(labels) == 0:
+        labels = [-1] * len(texts)
     
     test_dataset = TNEWSDataset(
         texts, labels, tokenizer, max_len
@@ -236,7 +251,7 @@ def create_test_dataloader(
         drop_last=False
     )
     
-    return test_loader
+    return test_loader, labels
 
 
 def demo():
