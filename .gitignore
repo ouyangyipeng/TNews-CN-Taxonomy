@@ -2,8 +2,6 @@
 __pycache__/
 *.pyc
 *.pyo
-plans/audit_report*.md
-plans/bib_audit.md
 2026ANN-NLP-*.zip
 docs/
 data/raw/
@@ -16,6 +14,11 @@ report/main.toc
 checkpoints/
 report.pdf
 .git/
+
+# AI 相关痕迹（不上传到 GitHub）
+ROADMAP.md
+prompt.md
+plans/
 
 # 大文件（超过 GitHub 100MB 限制）
 models/
