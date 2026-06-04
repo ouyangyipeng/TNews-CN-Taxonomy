@@ -1,5 +1,5 @@
 #!/bin/bash
-# 打包脚本：打包 TNEWS 中文短新闻分类项目
+# 打包脚本：最小化打包 TNEWS 中文短新闻分类项目
 
 set -e
 
@@ -23,33 +23,26 @@ mkdir -p "${PROJECT_DIR}"
 
 echo "复制项目文件..."
 
-# 复制源代码
-cp -r src "${PROJECT_DIR}/"
+# 复制源代码（排除 __pycache__）
+mkdir -p "${PROJECT_DIR}/src/models"
+cp src/*.py "${PROJECT_DIR}/src/" 2>/dev/null || true
+cp src/models/*.py "${PROJECT_DIR}/src/models/" 2>/dev/null || true
 
 # 复制脚本
 cp -r scripts "${PROJECT_DIR}/"
 
-# 复制数据（排除原始数据，只保留处理后的数据）
-mkdir -p "${PROJECT_DIR}/data"
-cp -r data/processed "${PROJECT_DIR}/data/" 2>/dev/null || true
-cp -r data/vocab "${PROJECT_DIR}/data/" 2>/dev/null || true
-cp -r data/splits "${PROJECT_DIR}/data/" 2>/dev/null || true
+# 复制数据（只保留有内容的目录）
+mkdir -p "${PROJECT_DIR}/data/processed"
+mkdir -p "${PROJECT_DIR}/data/vocab"
+cp -r data/processed/* "${PROJECT_DIR}/data/processed/" 2>/dev/null || true
+cp -r data/vocab/* "${PROJECT_DIR}/data/vocab/" 2>/dev/null || true
 cp data/eda_report.md "${PROJECT_DIR}/data/" 2>/dev/null || true
 
-# 复制报告
-cp -r report "${PROJECT_DIR}/"
+# 复制报告（只复制 PDF）
+mkdir -p "${PROJECT_DIR}/report"
+cp report/main.pdf "${PROJECT_DIR}/report/" 2>/dev/null || true
 
-# 复制配置文件
-cp -r configs "${PROJECT_DIR}/" 2>/dev/null || true
-
-# 复制计划文档
-cp -r plans "${PROJECT_DIR}/"
-
-# 复制 README 和 ROADMAP
-cp README.md "${PROJECT_DIR}/"
-cp ROADMAP.md "${PROJECT_DIR}/"
-
-# 复制日志（排除 A100 日志）
+# 复制日志
 mkdir -p "${PROJECT_DIR}/logs"
 cp -r logs/bilstm_char "${PROJECT_DIR}/logs/" 2>/dev/null || true
 cp -r logs/bilstm_word "${PROJECT_DIR}/logs/" 2>/dev/null || true
@@ -58,19 +51,13 @@ cp -r logs/transformer_char_v2 "${PROJECT_DIR}/logs/" 2>/dev/null || true
 cp -r logs/transformer_word "${PROJECT_DIR}/logs/" 2>/dev/null || true
 cp -r logs/transformer_subword "${PROJECT_DIR}/logs/" 2>/dev/null || true
 
-# 复制检查点（排除 A100 检查点）
-mkdir -p "${PROJECT_DIR}/checkpoints"
-cp -r checkpoints/bilstm_char "${PROJECT_DIR}/checkpoints/" 2>/dev/null || true
-cp -r checkpoints/bilstm_word "${PROJECT_DIR}/checkpoints/" 2>/dev/null || true
-cp -r checkpoints/transformer_char "${PROJECT_DIR}/checkpoints/" 2>/dev/null || true
-cp -r checkpoints/transformer_char_v2 "${PROJECT_DIR}/checkpoints/" 2>/dev/null || true
-cp -r checkpoints/transformer_word "${PROJECT_DIR}/checkpoints/" 2>/dev/null || true
-cp -r checkpoints/transformer_subword "${PROJECT_DIR}/checkpoints/" 2>/dev/null || true
+# 复制 README
+cp README.md "${PROJECT_DIR}/"
 
 # 创建 zip 文件
 echo "创建 zip 文件..."
 cd "${TEMP_DIR}"
-zip -r "${OUTPUT_ZIP}" "${PROJECT_NAME}" -x "*.pyc" -x "__pycache__/*" -x ".venv/*" -x ".git/*"
+zip -r "${OUTPUT_ZIP}" "${PROJECT_NAME}"
 
 # 移动 zip 文件到项目根目录
 mv "${OUTPUT_ZIP}" "/root/Course/NN/HW2/"
